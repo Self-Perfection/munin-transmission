@@ -1,4 +1,4 @@
-This is preliminary version of lightweight munin plugin for monitoring of transmission bittorrent client throughoutput and torrent count. Curently only netrs auth is supported.
+This is preliminary version of lightweight munin plugin for monitoring of transmission bittorrent client throughoutput and torrent count. Currently only netrc auth is supported.
 
 TODO:
 - Set up proper licensing lines (???) GPLv3????
