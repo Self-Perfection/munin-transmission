@@ -1,0 +1,85 @@
+#!/bin/dash
+
+[ X"$MUNIN_DEBUG" = X1 ] && set -x
+
+HOST="${0##*_}"
+
+#TODO: check for path with spaces, quotation and apostrophe
+#Походу рекомендовать netrc, т.к. он позволяет reuse и переваривает(?) проблемные символы
+if [ -n "$netrc_file" ]; then
+    AUTH="--netrc-file $netrc_file"
+fi
+
+cfg_header() {
+    echo "multigraph $1"
+    echo "host_name $HOST"
+    echo 'graph_args --base 1000'
+    echo 'graph_category network'
+}
+
+config() {
+    cfg_header 'transmission_activity'
+    echo "graph_title Transmission activity for $HOST"
+    echo 'graph_vlabel torrents'
+    echo 'graph_info This graph shows the number of Transmission torrents'
+    echo 'total.label total'
+    echo 'total.draw AREA'
+    echo 'total.min 0'
+    echo 'total.colour AFE3FF'
+    echo 'active.label active'
+    echo 'active.draw AREA'
+    echo 'active.min 0'
+    echo 'active.colour 77FF6F'
+    echo 'paused.label paused'
+    echo 'paused.draw LINE1'
+    echo 'paused.min 0'
+    echo 'paused.colour 8F8F8F'
+    cfg_header 'transmission_throughput'
+    echo "graph_title Transmission throughput for $HOST"
+    echo 'graph_vlabel bits in (-) / out (+) per ${graph_period}'
+    echo 'graph_info This graph shows the throughput for Transmission torrents'
+    echo 'down.label throughput'
+    echo 'down.type COUNTER'
+    echo 'down.draw LINE1'
+    echo 'down.min 0'
+    echo 'down.cdef down,8,*'
+    echo 'down.graph no'
+    echo 'up.label sent'
+    echo 'up.negative down'
+    echo 'up.type COUNTER'
+    echo 'up.draw LINE1'
+    echo 'up.min 0'
+    echo 'up.cdef up,8,*'
+}
+
+
+fetch() {
+    RPCURL="http://$HOST:9091/transmission/rpc/"
+
+    SID=$(curl -s $AUTH -I "$RPCURL" | sed -n '/X-Transmission-Session-Id/{s/.*: *//; s/\r//; p}')
+    curl -s --data '{"method":"session-stats"}' --header "X-Transmission-Session-Id: $SID" $AUTH "$RPCURL" |
+    sed -rn 'H; ${g;
+    s/.*torrentCount[^0-9]*([0-9]*).*/multigraph transmission_activity\ntotal.value \1/;
+    p; g;
+    s/.*activeTorrentCount[^0-9]*([0-9]*).*/active.value \1/;
+    p; g;
+    s/.*pausedTorrentCount[^0-9]*([0-9]*).*/paused.value \1/;
+    p; g;
+    s/.*cumulative-stats([^}]*).*/\1/;
+    h;
+    s/.*downloadedBytes[^0-9]*([0-9]*).*/multigraph transmission_throughput\ndown.value \1/;
+    p; g;
+    s/.*uploadedBytes[^0-9]*([0-9]*).*/up.value \1/;p
+    }'
+}
+
+case "$1" in
+    config)
+	config
+	;;
+    *)
+	fetch
+	;;
+esac
+
+# vim:ft=sh
