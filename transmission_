@@ -2,7 +2,12 @@
 
 [ X"$MUNIN_DEBUG" = X1 ] && set -x
 
-HOST="${0##*_}"
+PLUGIN_FILENAME="${0##*/}"
+if [[ "$PLUGIN_FILENAME" =~ _ ]]; then
+    CONFIGURED_HOST="${PLUGIN_FILENAME##*_}"
+fi
+#Use localhost by default if host were not configured
+HOST="${CONFIGURED_HOST:-localhost}"
 
 declare -a CURL_OPTS=('-s')
 
@@ -14,7 +19,7 @@ fi
 
 cfg_header() {
     echo "multigraph $1"
-    echo "host_name $HOST"
+    [ -n "$CONFIGURED_HOST" ] && echo "host_name $HOST"
     echo 'graph_args --base 1000'
     echo 'graph_category network'
 }
