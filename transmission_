@@ -1,13 +1,15 @@
-#!/bin/dash
+#!/bin/bash
 
 [ X"$MUNIN_DEBUG" = X1 ] && set -x
 
 HOST="${0##*_}"
 
+declare -a CURL_OPTS=('-s')
+
 #TODO: check for path with spaces, quotation and apostrophe
 #Походу рекомендовать netrc, т.к. он позволяет reuse и переваривает(?) проблемные символы
 if [ -n "$netrc_file" ]; then
-    AUTH="--netrc-file $netrc_file"
+    CURL_OPTS=("$CURL_OPTS" '--netrc-file' "$netrc_file")
 fi
 
 cfg_header() {
@@ -56,8 +58,8 @@ config() {
 fetch() {
     RPCURL="http://$HOST:9091/transmission/rpc/"
 
-    SID=$(curl -s $AUTH -I "$RPCURL" | sed -n '/X-Transmission-Session-Id/{s/.*: *//; s/\r//; p}')
-    curl -s --data '{"method":"session-stats"}' --header "X-Transmission-Session-Id: $SID" $AUTH "$RPCURL" |
+    SID=$(curl "${CURL_OPTS[@]}" -I "$RPCURL" | sed -n '/X-Transmission-Session-Id/{s/.*: *//; s/\r//; p}')
+    curl "${CURL_OPTS[@]}" --data '{"method":"session-stats"}' --header "X-Transmission-Session-Id: $SID" "$RPCURL" |
     sed -rn 'H; ${g;
     s/.*torrentCount[^0-9]*([0-9]*).*/multigraph transmission_activity\ntotal.value \1/;
     p; g;
