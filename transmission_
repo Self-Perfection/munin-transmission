@@ -63,30 +63,35 @@ config() {
 fetch() {
     RPCURL="http://$HOST:9091/transmission/rpc/"
 
-    SID=$(curl "${CURL_OPTS[@]}" -I "$RPCURL" | sed -n '/X-Transmission-Session-Id/{s/.*: *//; s/\r//; p}')
-    curl "${CURL_OPTS[@]}" --data '{"method":"session-stats"}' --header "X-Transmission-Session-Id: $SID" "$RPCURL" |
-    sed -rn 'H; ${g;
-    s/.*torrentCount[^0-9]*([0-9]*).*/multigraph transmission_activity\ntotal.value \1/;
-    p; g;
-    s/.*activeTorrentCount[^0-9]*([0-9]*).*/active.value \1/;
-    p; g;
-    s/.*pausedTorrentCount[^0-9]*([0-9]*).*/paused.value \1/;
-    p; g;
-    s/.*cumulative-stats([^}]*).*/\1/;
-    h;
-    s/.*downloadedBytes[^0-9]*([0-9]*).*/multigraph transmission_throughput\ndown.value \1/;
-    p; g;
-    s/.*uploadedBytes[^0-9]*([0-9]*).*/up.value \1/;p
-    }'
+    REPLY=$(curl "${CURL_OPTS[@]}" -I "$RPCURL")
+    if [[ "$REPLY" =~ X-Transmission-Session-Id:\ *([[:alnum:]]*) ]]; then
+        SID=${BASH_REMATCH[1]}
+        STATS=$(curl "${CURL_OPTS[@]}" --data '{"method":"session-stats"}' --header "X-Transmission-Session-Id: $SID" "$RPCURL")
+
+        [[ "$STATS" =~ torrentCount[^0-9]*([0-9]*) ]] && total=${BASH_REMATCH[1]}
+        [[ "$STATS" =~ activeTorrentCount[^0-9]*([0-9]*) ]] && active=${BASH_REMATCH[1]}
+        [[ "$STATS" =~ pausedTorrentCount[^0-9]*([0-9]*) ]] && paused=${BASH_REMATCH[1]}
+        [[ "$STATS" =~ cumulative-stats([^}]*) ]] && CUMULATIVE_STATS=${BASH_REMATCH[1]}
+        [[ "$CUMULATIVE_STATS" =~ downloadedBytes[^0-9]*([0-9]*) ]] && down=${BASH_REMATCH[1]}
+        [[ "$CUMULATIVE_STATS" =~ uploadedBytes[^0-9]*([0-9]*) ]] && up=${BASH_REMATCH[1]}
+    fi
+
+    echo 'multigraph transmission_activity'
+    echo "total.value ${total:-U}"
+    echo "active.value ${active:-U}"
+    echo "paused.value ${paused:-U}"
+    echo 'multigraph transmission_throughput'
+    echo "down.value ${down:-U}"
+    echo "up.value ${up:-U}"
 }
 
 case "$1" in
     config)
-	config
-	;;
+        config
+        ;;
     *)
-	fetch
-	;;
+        fetch
+        ;;
 esac
 
 # vim:ft=sh
