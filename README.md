@@ -7,5 +7,5 @@ TODO:
 - [x] Switch to bash and bash arrays for proper handling of special characters (e.g. spaces) in user/password/netrc file path;
 - [ ] Write documetation for munin-doc;
 - [ ] Write nice README.md;
-- [ ] Switch to parsing strings with bash regular expressions and other embedded features to drop sed dependency.
+- [x] Switch to parsing strings with bash regular expressions and other embedded features to drop sed dependency.
 - [ ] Allow auto config. Check if there is available transmission rpc on localhost:9091.
